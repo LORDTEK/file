@@ -14,9 +14,9 @@
 #define outputFile "C:\\Vision\\webNetOUTPUT.dat"
 #define testFile "C:\\Vision\\webNetTEST.dat"
 #elif __linux__
-#define inputFile "/home/xq/webNetINPUT.dat"
-#define outputFile "/home/xq/webNetOUTPUT.dat"
-#define testFile "/home/xq/webNetTEST.dat"
+#define inputFile "/opt/webnet/webNetINPUT.dat"
+#define outputFile "/opt/webnet/webNetOUTPUT.dat"
+#define testFile "/opt/webnet/webNetTEST.dat"
 #else
 #define inputFile "/Users/Shared/CommonAll/webNetINPUT.dat"
 #define outputFile "/Users/Shared/CommonAll/webNetOUTPUT.dat"
