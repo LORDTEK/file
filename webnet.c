@@ -23,6 +23,7 @@
 #define testFile "/Users/Shared/CommonAll/webNetTEST.dat"
 #endif
 
+void MileStone(int perIN, int perH, int layerH, int perOUT, double *nodeIN, double *testIN, double *nodeOUT, double *weight, int usedLine);
 double Activate(double value);
 double Derivate(double value);
 
@@ -32,7 +33,7 @@ int main(int argc, char **argv, char **envp) {
     double cpu_time_used;
     startTime = clock();
 
-    int loopNumber = 1, loopNumber_temp = 1, multimillion = 1000000;
+    int loopNumber = 6, loopNumber_temp = 1, multimillion = 1000000;
     if(argv[1] != '\0'){// loopNumber can define by (first) argument
         loopNumber_temp = atof(argv[1]);
         if ( (loopNumber_temp > 0) && (loopNumber_temp < 1000000000) ){
@@ -70,6 +71,7 @@ int main(int argc, char **argv, char **envp) {
     double *trainerIN = (double *) calloc(trainerSetNumber * perIN, sizeof(double));
     double *testIN = (double *) calloc(trainerSetNumber * perIN, sizeof(double));
     double *trainerOUT = (double *) calloc(trainerSetNumber * perOUT, sizeof(double));
+    double *testOUT = (double *) calloc(trainerSetNumber * perOUT, sizeof(double));
     int perH = perIN + perOUT;
     int layerH = (int) ( (sqrt(pow(perIN, 2)+pow(perOUT, 2)) + perH)/8.0 + 2.0 );
     double *nodeIN = (double *) calloc(perIN + layerH*perH + perOUT, sizeof(double));
@@ -83,23 +85,30 @@ int main(int argc, char **argv, char **envp) {
     // Get TEST data (input only)
     FILE *testData = fopen(testFile, "r+");
     lineCounter = 0;
-    i = 0;
+    i = 0; j=0;
     #ifdef _WIN32
         char *lineFileTest = new char[1024];
         double *dataLineTest = new double[32];
-        if( fgets(lineFileTest, 1024, testData) != NULL ) {
+        while( fgets(lineFileTest, 1024, testData) != NULL ) {
     #else
         char *lineFileTest = 0;
         size_t lengthLineTest = 0;
-        if( (getline(&lineFileTest, &lengthLineTest, testData)) != -1 ) {
+        while( (getline(&lineFileTest, &lengthLineTest, testData)) != -1 ) {
     #endif
             char *token = strtok(lineFileTest, " ");
             while (token != NULL) {
-            *(testIN+i) = atof(token);
-            i++;
-            token = strtok(NULL, " ");
+                if((lineCounter&1)==0?1:0){//input of test
+                    *(testIN+i) = atof(token);
+                    i++;
+                }
+                else{//output of test
+                    *(testOUT+j) = atof(token);
+                    j++;
+                }
+                token = strtok(NULL, " ");
+            }
+            lineCounter++;
         }
-    }
     fclose(testData);
     if(lineFileTest){
         free(lineFileTest);
@@ -150,7 +159,7 @@ int main(int argc, char **argv, char **envp) {
     // Get training data (input and output)
     FILE *inputData = fopen(inputFile, "r+");
     lineCounter = 0;
-    i = 0;
+    i = 0; j=0;
 #ifdef _WIN32
     char *lineFile = new char[1024];
     double *dataLine = new double[32];
@@ -260,6 +269,9 @@ int main(int argc, char **argv, char **envp) {
             multimillion = multimillion - 1;
         }
         else {
+
+            //MileStone(perIN, perH, layerH, perOUT, nodeIN, testIN, nodeOUT, weight, usedLine);
+
             multimillion = 1000000;
             i = i + 1;
         }
@@ -319,6 +331,43 @@ int main(int argc, char **argv, char **envp) {
     printf("Processing time = %f seconds\n", cpu_time_used);
 
     return (EXIT_SUCCESS);
+}
+
+void MileStone(int perIN, int perH, int layerH, int perOUT, double *nodeIN, double *testIN, double *nodeOUT, double *weight, int usedLine){
+    int i=0, j=0, k=0, m=0;
+
+    for(j=0; j<(perIN+perH*layerH+perOUT); j++){//Clear nodeIN because of +=
+        *(nodeIN+j) = 0.0;
+    }
+    //TEST
+    for(j=0; j<perIN; j++){//INPUT ACTIVATION
+        *(nodeIN+j) = *(testIN+j);
+        *(nodeOUT+j) = *(nodeIN+j);//Do not activate (exception)
+    }
+    for(j=0; j<perIN; j++){//INPUT TO FIRST HIDDEN
+        for(k=0; k<perH; k++){
+            *(nodeIN+perIN+k) += *(weight + usedLine++) * *(nodeOUT+j);
+            *(nodeOUT+perIN+k) = Activate(*(nodeIN+perIN+k));
+        }
+    }
+    for(j=1; j<layerH; j++){//HIDDENS
+        for(k=0; k<perH; k++){
+            for(m=0; m<perH; m++){
+                *(nodeIN+perIN+i*perH+m) += *(weight + usedLine++) * *(nodeOUT+perIN+(j-1)*perH+k);
+                *(nodeOUT+perIN+i*perH+m) = Activate(*(nodeIN+perIN+i*perH+m));
+            }
+        }
+    }
+    for(j=0; j<perH; j++){//LAST HIDDEN TO OUTPUT
+        for(k=0; k<perOUT; k++){
+            *(nodeIN+perIN+perH*layerH+k) += *(weight + usedLine++) * *(nodeOUT+perIN+(layerH-1)*perH+j);
+            *(nodeOUT+perIN+perH*layerH+k) = Activate(*(nodeIN+perIN+perH*layerH+k));
+        }
+    }
+    for(j=0; j<perOUT; j++){
+        printf("%f        ", *(nodeOUT+perIN+perH*layerH+j));
+    }
+    printf("\n");
 }
 
 double Activate(double value){
